@@ -12,7 +12,7 @@ from gnomehat.series import TimeSeries
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--batchSize', type=int, default=64, help='input batch size')
+parser.add_argument('--batchSize', type=int, default=100, help='input batch size')
 parser.add_argument('--epochs', type=int, default=25, help='number of epochs to train for')
 parser.add_argument('--cuda', default=True, action="store_true", help='Use CUDA (requires GPU)')
 parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')
@@ -23,7 +23,7 @@ print(opt)
 def get_cifar(training=False):
     # CIFAR stands for Canadian Institute for Advanced Research
     # The CIFAR dataset consists of 32x32 RGB images of 10 categories
-    dataset = CIFAR10(root='.', download=True, train=training,
+    dataset = CIFAR10(root='..', download=True, train=training,
                            transform=transforms.Compose([
                                transforms.Resize(32),
                                transforms.ToTensor(),
@@ -65,12 +65,12 @@ optimizerC = optim.Adam(netC.parameters(), lr=opt.lr)
 ts = TimeSeries('CIFAR10 Training', opt.epochs * len(train_dataloader))
 
 for epoch in range(opt.epochs):
-    for data, labels in train_dataloader:
-        data = data.to(device)
+    for data_batch, labels in train_dataloader:
+        data_batch = data_batch.to(device)
         labels = labels.to(device)
 
         netC.zero_grad()
-        predictions = netC(data)
+        predictions = netC(data_batch)
         loss = F.cross_entropy(predictions, labels)
         loss.backward()
         optimizerC.step()
@@ -81,15 +81,16 @@ for epoch in range(opt.epochs):
         ts.collect('Training Accuracy', accuracy)
         ts.print_every(n_sec=1)
 
-    for data, labels in test_dataloader:
-        data = data.to(device)
+    for data_batch, labels in test_dataloader:
+        data_batch = data_batch.to(device)
         labels = labels.to(device)
 
-        predictions = netC(data)
+        predictions = netC(data_batch)
         pred_confidence, pred_argmax = predictions.max(dim=1)
-        accuracy = torch.sum(pred_argmax == labels)
+        correct = torch.sum(pred_argmax == labels)
 
         ts.collect('Testing Loss', loss)
-        ts.collect('Testing Accuracy', accuracy)
+        ts.collect('Testing Accuracy', correct / len(data_batch))
         ts.print_every(n_sec=1)
     print(ts)
+    print('Final results: {} correct out of {}'.format(correct, len(test_dataloader.dataset)))
