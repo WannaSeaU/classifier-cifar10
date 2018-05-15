@@ -12,7 +12,7 @@ from gnomehat.series import TimeSeries
 
 
 parser = argparse.ArgumentParser()
-parser.add_argument('--batchSize', type=int, default=100, help='input batch size')
+parser.add_argument('--batchSize', type=int, default=64, help='input batch size')
 parser.add_argument('--epochs', type=int, default=25, help='number of epochs to train for')
 parser.add_argument('--cuda', default=True, action="store_true", help='Use CUDA (requires GPU)')
 parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')
@@ -44,7 +44,7 @@ class Classifier(nn.Module):
         self.fc1 = nn.Linear(32*32*3, 128)
         self.fc2 = nn.Linear(128, 10)
 
-    def forward(self, x):
+    def forward(self, x, ts):
         # The input image is in standard "BCHW" format
         # To use an MLP, we reshape it to a 1D vector
         batch_size, channels, height, width = x.shape
@@ -52,9 +52,14 @@ class Classifier(nn.Module):
 
         # A two layer MLP
         x = self.fc1(x)
-        x = F.relu(x)
+        x = F.leaky_relu(x)
+        ts.collect('Layer 1 Activation Mean', x.mean())
+        ts.collect('Layer 1 Activation Variance', x.var(0).mean())
+        ts.collect('Dead Neurons', torch.sum(x == 0))
         x = self.fc2(x)
-        x = F.softmax(x)
+        ts.collect('Layer 2 Activation Mean', x.mean())
+        ts.collect('Layer 2 Activation Variance', x.var(0).mean())
+        x = F.softmax(x, dim=1)
         return x
 
 
@@ -62,7 +67,8 @@ netC = Classifier().to(device)
 
 optimizerC = optim.Adam(netC.parameters(), lr=opt.lr)
 
-ts = TimeSeries('CIFAR10 Training', opt.epochs * len(train_dataloader))
+total_batches = len(train_dataloader) + len(test_dataloader)
+ts = TimeSeries('CIFAR10 Training', opt.epochs * total_batches)
 
 for epoch in range(opt.epochs):
     for data_batch, labels in train_dataloader:
@@ -70,29 +76,30 @@ for epoch in range(opt.epochs):
         labels = labels.to(device)
 
         netC.zero_grad()
-        predictions = netC(data_batch)
+        predictions = netC(data_batch, ts)
         loss = F.cross_entropy(predictions, labels)
         loss.backward()
         optimizerC.step()
 
         pred_confidence, pred_argmax = predictions.max(dim=1)
+        import pdb; pdb.set_trace()
         correct = torch.sum(pred_argmax == labels)
-        accuracy = correct / len(data_batch)
+        accuracy = float(correct) / len(data_batch)
 
         ts.collect('Training Loss', loss)
         ts.collect('Training Accuracy', accuracy)
-        ts.print_every(n_sec=1)
+        ts.print_every(n_sec=4)
 
     for data_batch, labels in test_dataloader:
         data_batch = data_batch.to(device)
         labels = labels.to(device)
 
-        predictions = netC(data_batch)
+        predictions = netC(data_batch, ts)
         pred_confidence, pred_argmax = predictions.max(dim=1)
         correct = torch.sum(pred_argmax == labels)
 
         ts.collect('Testing Loss', loss)
-        ts.collect('Testing Accuracy', correct / len(data_batch))
-        ts.print_every(n_sec=1)
+        ts.collect('Testing Accuracy', float(correct) / len(data_batch))
+        ts.print_every(n_sec=4)
     print(ts)
     print('Final results: {} correct out of {}'.format(correct, len(test_dataloader.dataset)))
