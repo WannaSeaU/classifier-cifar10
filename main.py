@@ -76,7 +76,9 @@ for epoch in range(opt.epochs):
         optimizerC.step()
 
         pred_confidence, pred_argmax = predictions.max(dim=1)
-        accuracy = torch.sum(pred_argmax == labels)
+        correct = torch.sum(pred_argmax == labels)
+        accuracy = correct / len(data_batch)
+
         ts.collect('Training Loss', loss)
         ts.collect('Training Accuracy', accuracy)
         ts.print_every(n_sec=1)
