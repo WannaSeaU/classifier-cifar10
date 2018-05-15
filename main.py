@@ -62,9 +62,9 @@ netC = Classifier().to(device)
 
 optimizerC = optim.Adam(netC.parameters(), lr=opt.lr)
 
+ts = TimeSeries('CIFAR10 Training', opt.epochs * len(train_dataloader))
 
 for epoch in range(opt.epochs):
-    ts = TimeSeries('CIFAR10 Training', len(train_dataloader))
     for data, labels in train_dataloader:
         data = data.to(device)
         labels = labels.to(device)
@@ -81,7 +81,6 @@ for epoch in range(opt.epochs):
         ts.collect('Training Accuracy', accuracy)
         ts.print_every(n_sec=1)
 
-    ts_test = TimeSeries('CIFAR10 Testing')
     for data, labels in test_dataloader:
         data = data.to(device)
         labels = labels.to(device)
@@ -90,7 +89,7 @@ for epoch in range(opt.epochs):
         pred_confidence, pred_argmax = predictions.max(dim=1)
         accuracy = torch.sum(pred_argmax == labels)
 
-        ts_test.collect('Testing Loss', loss)
-        ts_test.collect('Testing Accuracy', accuracy)
-        ts_test.print_every(n_sec=1)
-    print(ts_test)
+        ts.collect('Testing Loss', loss)
+        ts.collect('Testing Accuracy', accuracy)
+        ts.print_every(n_sec=1)
+    print(ts)
