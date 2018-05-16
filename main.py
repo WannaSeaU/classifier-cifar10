@@ -82,7 +82,6 @@ for epoch in range(opt.epochs):
         optimizerC.step()
 
         pred_confidence, pred_argmax = predictions.max(dim=1)
-        import pdb; pdb.set_trace()
         correct = torch.sum(pred_argmax == labels)
         accuracy = float(correct) / len(data_batch)
 
