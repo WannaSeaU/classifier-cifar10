@@ -52,7 +52,7 @@ class Classifier(nn.Module):
 
         # A two layer MLP
         x = self.fc1(x)
-        x = F.leaky_relu(x)
+        x = F.relu(x)
         ts.collect('Layer 1 Activation Mean', x.mean())
         ts.collect('Layer 1 Activation Variance', x.var(0).mean())
         ts.collect('Dead Neurons', torch.sum(x == 0))
