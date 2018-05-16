@@ -89,6 +89,7 @@ for epoch in range(opt.epochs):
         ts.collect('Training Accuracy', accuracy)
         ts.print_every(n_sec=4)
 
+    total_correct = 0
     for data_batch, labels in test_dataloader:
         data_batch = data_batch.to(device)
         labels = labels.to(device)
@@ -96,9 +97,11 @@ for epoch in range(opt.epochs):
         predictions = netC(data_batch, ts)
         pred_confidence, pred_argmax = predictions.max(dim=1)
         correct = torch.sum(pred_argmax == labels)
+        accuracy = float(correct) / len(data_batch)
+        total_correct += correct
 
         ts.collect('Testing Loss', loss)
-        ts.collect('Testing Accuracy', float(correct) / len(data_batch))
+        ts.collect('Testing Accuracy', accuracy)
         ts.print_every(n_sec=4)
 print(ts)
-print('Final results: {} correct out of {}'.format(correct, len(test_dataloader.dataset)))
+print('Final results: {} correct out of {}'.format(total_correct, len(test_dataloader.dataset)))
