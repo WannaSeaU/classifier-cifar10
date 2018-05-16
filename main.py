@@ -41,8 +41,13 @@ device = torch.device("cuda" if opt.cuda else "cpu")
 class Classifier(nn.Module):
     def __init__(self):
         super(Classifier, self).__init__()
-        self.fc1 = nn.Linear(32*32*3, 128)
-        self.fc2 = nn.Linear(128, 10)
+        self.fc1 = nn.Linear(32*32*3, 256)
+        self.drop1 = nn.Dropout(.2)
+        self.bn1 = nn.BatchNorm1d(256)
+        self.fc2 = nn.Linear(256, 256)
+        self.drop2 = nn.Dropout(.2)
+        self.bn2 = nn.BatchNorm1d(256)
+        self.fc3 = nn.Linear(256, 10)
 
     def forward(self, x, ts):
         # The input image is in standard "BCHW" format
@@ -50,15 +55,23 @@ class Classifier(nn.Module):
         batch_size, channels, height, width = x.shape
         x = x.reshape((batch_size, -1))
 
-        # A two layer MLP
         x = self.fc1(x)
-        x = F.relu(x)
+        x = F.leaky_relu(x)
+        x = self.bn1(x)
+        x = self.drop1(x)
         ts.collect('Layer 1 Activation Mean', x.mean())
         ts.collect('Layer 1 Activation Variance', x.var(0).mean())
-        ts.collect('Dead Neurons', torch.sum(x == 0))
+
         x = self.fc2(x)
+        x = F.leaky_relu(x)
+        x = self.bn2(x)
+        x = self.drop2(x)
         ts.collect('Layer 2 Activation Mean', x.mean())
         ts.collect('Layer 2 Activation Variance', x.var(0).mean())
+
+        x = self.fc3(x)
+        ts.collect('Layer 3 Activation Mean', x.mean())
+        ts.collect('Layer 3 Activation Variance', x.var(0).mean())
         x = F.softmax(x, dim=1)
         return x
 
@@ -68,7 +81,7 @@ netC = Classifier().to(device)
 optimizerC = optim.Adam(netC.parameters(), lr=opt.lr)
 
 total_batches = len(train_dataloader) + len(test_dataloader)
-ts = TimeSeries('CIFAR10 Training', opt.epochs * total_batches)
+ts = TimeSeries('CIFAR10', opt.epochs * total_batches)
 
 for epoch in range(opt.epochs):
     for data_batch, labels in train_dataloader:
