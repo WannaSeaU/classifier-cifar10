@@ -100,5 +100,5 @@ for epoch in range(opt.epochs):
         ts.collect('Testing Loss', loss)
         ts.collect('Testing Accuracy', float(correct) / len(data_batch))
         ts.print_every(n_sec=4)
-    print(ts)
-    print('Final results: {} correct out of {}'.format(correct, len(test_dataloader.dataset)))
+print(ts)
+print('Final results: {} correct out of {}'.format(correct, len(test_dataloader.dataset)))
