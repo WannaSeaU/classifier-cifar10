@@ -44,7 +44,7 @@ class Classifier(nn.Module):
         self.fc1 = nn.Linear(32*32*3, 128)
         self.fc2 = nn.Linear(128, 10)
 
-    def forward(self, x, ts):
+    def forward(self, x):
         # The input image is in standard "BCHW" format
         # To use an MLP, we reshape it to a 1D vector
         batch_size, channels, height, width = x.shape
@@ -53,12 +53,7 @@ class Classifier(nn.Module):
         # A two layer MLP
         x = self.fc1(x)
         x = F.relu(x)
-        ts.collect('Layer 1 Activation Mean', x.mean())
-        ts.collect('Layer 1 Activation Variance', x.var(0).mean())
-        ts.collect('Dead Neurons', torch.sum(x == 0))
         x = self.fc2(x)
-        ts.collect('Layer 2 Activation Mean', x.mean())
-        ts.collect('Layer 2 Activation Variance', x.var(0).mean())
         x = F.softmax(x, dim=1)
         return x
 
@@ -76,7 +71,7 @@ for epoch in range(opt.epochs):
         labels = labels.to(device)
 
         netC.zero_grad()
-        predictions = netC(data_batch, ts)
+        predictions = netC(data_batch)
         loss = F.cross_entropy(predictions, labels)
         loss.backward()
         optimizerC.step()
@@ -89,16 +84,18 @@ for epoch in range(opt.epochs):
         ts.collect('Training Accuracy', accuracy)
         ts.print_every(n_sec=4)
 
+    total_correct = 0
     for data_batch, labels in test_dataloader:
         data_batch = data_batch.to(device)
         labels = labels.to(device)
 
-        predictions = netC(data_batch, ts)
+        predictions = netC(data_batch)
         pred_confidence, pred_argmax = predictions.max(dim=1)
         correct = torch.sum(pred_argmax == labels)
+        total_correct += correct
 
         ts.collect('Testing Loss', loss)
         ts.collect('Testing Accuracy', float(correct) / len(data_batch))
         ts.print_every(n_sec=4)
 print(ts)
-print('Final results: {} correct out of {}'.format(correct, len(test_dataloader.dataset)))
+print('Final results: {} correct out of {}'.format(total_correct, len(test_dataloader.dataset)))
