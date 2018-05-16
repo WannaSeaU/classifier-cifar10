@@ -8,7 +8,6 @@ from torchvision.datasets import CIFAR10
 from torchvision import transforms
 
 from torch.nn import functional as F
-from gnomehat.series import TimeSeries
 
 
 parser = argparse.ArgumentParser()
@@ -59,11 +58,7 @@ class Classifier(nn.Module):
 
 
 netC = Classifier().to(device)
-
 optimizerC = optim.Adam(netC.parameters(), lr=opt.lr)
-
-total_batches = len(train_dataloader) + len(test_dataloader)
-ts = TimeSeries('CIFAR10 Training', opt.epochs * total_batches)
 
 for epoch in range(opt.epochs):
     for data_batch, labels in train_dataloader:
@@ -80,9 +75,8 @@ for epoch in range(opt.epochs):
         correct = torch.sum(pred_argmax == labels)
         accuracy = float(correct) / len(data_batch)
 
-        ts.collect('Training Loss', loss)
-        ts.collect('Training Accuracy', accuracy)
-        ts.print_every(n_sec=4)
+        print('Training Loss: {}'.format(loss.item()))
+        print('Training Accuracy: {}'.format(accuracy))
 
     total_correct = 0
     for data_batch, labels in test_dataloader:
@@ -92,10 +86,9 @@ for epoch in range(opt.epochs):
         predictions = netC(data_batch)
         pred_confidence, pred_argmax = predictions.max(dim=1)
         correct = torch.sum(pred_argmax == labels)
+        accuracy = float(correct) / len(data_batch)
         total_correct += correct
 
-        ts.collect('Testing Loss', loss)
-        ts.collect('Testing Accuracy', float(correct) / len(data_batch))
-        ts.print_every(n_sec=4)
-print(ts)
+        print('Testing Loss: {}'.format(loss.item()))
+        print('Testing Accuracy: {}'.format(accuracy))
 print('Final results: {} correct out of {}'.format(total_correct, len(test_dataloader.dataset)))
