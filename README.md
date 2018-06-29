@@ -1,7 +1,14 @@
 ## CIFAR10
 
-A simple example of building and training a neural network for image
-classification. Implemented in PyTorch.
+A simple example of building and training a neural network for the
+CIFAR10 classification task.
 
-Requires [gnomehat](https://github.com/lwneal/gnomehat) to generate
-figures.
+Written in a simple style to demonstrate the use of PyTorch.
+
+Usage:
+
+```
+    pip install -r requirements.txt
+    python main.py
+```
+

@@ -4,6 +4,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import torch.utils.data
+from pprint import pprint
 from torchvision.datasets import CIFAR10
 from torchvision import transforms
 
@@ -18,7 +19,8 @@ parser.add_argument('--cuda', default=True, action="store_true", help='Use CUDA 
 parser.add_argument('--lr', type=float, default=0.0001, help='learning rate')
 
 opt = parser.parse_args()
-print(opt)
+print('Running with options:')
+pprint(opt)
 
 def get_cifar(training=False):
     # CIFAR stands for Canadian Institute for Advanced Research
@@ -79,7 +81,6 @@ class Classifier(nn.Module):
 
 
 netC = Classifier().to(device)
-
 optimizerC = optim.Adam(netC.parameters(), lr=opt.lr)
 
 total_batches = len(train_dataloader) + len(test_dataloader)
@@ -87,15 +88,23 @@ ts = TimeSeries('CIFAR10', opt.epochs * total_batches)
 
 for epoch in range(opt.epochs):
     for data_batch, labels in train_dataloader:
+        # t.to(device) is equivalent to t.cuda()
         data_batch = data_batch.to(device)
         labels = labels.to(device)
 
+        # At the center of a Pytorch training loop are three operations:
+        # parameters.zero_grad() to reset accumulated gradients
+        # loss.backward() to accumulate a gradient for some loss function
+        # optimizer.step() to update parameters using the gradient
         netC.zero_grad()
         predictions = netC(data_batch, ts)
         loss = F.cross_entropy(predictions, labels)
         loss.backward()
         optimizerC.step()
 
+        # For classification, we want to track accuracy during training
+        # Note that accuracy is our true objective, but we optimize with
+        # cross_entropy because it is smoothly differentiable
         pred_confidence, pred_argmax = predictions.max(dim=1)
         correct = torch.sum(pred_argmax == labels)
         accuracy = float(correct) / len(data_batch)
