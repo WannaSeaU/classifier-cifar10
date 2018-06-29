@@ -8,7 +8,7 @@ from torchvision.datasets import CIFAR10
 from torchvision import transforms
 
 from torch.nn import functional as F
-from gnomehat.series import TimeSeries
+from logutil import TimeSeries
 
 
 parser = argparse.ArgumentParser()
@@ -40,6 +40,8 @@ device = torch.device("cuda" if opt.cuda else "cpu")
 
 class Classifier(nn.Module):
     def __init__(self):
+        # This is a fully-connected neural network ("multilayer perceptron")
+        # For better results, try adding convolutional layers
         super(Classifier, self).__init__()
         self.fc1 = nn.Linear(32*32*3, 256)
         self.drop1 = nn.Dropout(.2)
